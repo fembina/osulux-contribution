@@ -1,0 +1,510 @@
+package com.osuplayer;
+
+import java.io.File;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.Toggle;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.Stage;
+import uk.co.caprica.vlcj.javafx.videosurface.ImageViewVideoSurface;
+import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter;
+import uk.co.caprica.vlcj.player.embedded.EmbeddedMediaPlayer;
+
+public class UIController {
+
+    private final ListView<String> songListView = new ListView<>();
+    private FilteredList<String> filteredSongList;
+    private final ObservableList<String> masterSongList = FXCollections.observableArrayList();
+    private final EmbeddedMediaPlayer audioPlayer;
+    private final EmbeddedMediaPlayer videoPlayer;
+    private final MusicManager musicManager;
+    private final ConfigManager configManager;
+    private final PlaylistManager playlistManager;
+    private final PlaybackManager playbackManager;
+    private final PlaylistHelper playlistHelper;
+    private final VideoVisibilityHelper videoVisibilityHelper;
+    private final VideoSynchronizer videoSynchronizer;
+    private final FavoritesManager favoritesManager;
+    private final SearchManager searchManager;
+    private final Label currentSongLabel = new Label("Sin canción");
+    private final Button favoriteButton = new Button("♡");
+    private final ImageView coverImageView;
+    private final ImageView videoImageView;
+    private final StackPane mediaDisplayStack;
+    private BorderPane mediaContainer;
+    private final ExportManager exportManager;
+    private final CoverManager coverManager;
+    private final HistoryManager historyManager = new HistoryManager();
+    private Scene scene;
+
+    public UIController(EmbeddedMediaPlayer audioPlayer, EmbeddedMediaPlayer videoPlayer, ConfigManager configManager, MusicManager musicManager, DiscordRichPresence discord) {
+        this.audioPlayer = audioPlayer;
+        this.videoPlayer = videoPlayer;
+        this.configManager = configManager;
+        this.musicManager = musicManager;
+        
+        this.coverImageView = createCoverImageView();
+        this.videoImageView = createVideoImageView();
+        
+        this.videoVisibilityHelper = new VideoVisibilityHelper(videoImageView, coverImageView);
+        this.videoSynchronizer = new VideoSynchronizer(audioPlayer, videoPlayer);
+        this.videoSynchronizer.setCallbacks(
+            () -> Platform.runLater(videoVisibilityHelper::showVideo),
+            () -> Platform.runLater(videoVisibilityHelper::hideVideo)
+        );
+        this.playlistManager = new PlaylistManager(configManager);
+        this.favoritesManager = new FavoritesManager(configManager, playlistManager);
+        this.searchManager = new SearchManager(musicManager);
+        this.songListView.setFixedCellSize(28);
+        this.songListView.setStyle(String.join("",
+            "-fx-selection-bar: -fx-accent;",
+            "-fx-selection-bar-non-focused: -fx-accent;",
+            "-fx-focus-color: transparent;",
+            "-fx-faint-focus-color: transparent;"
+        ));
+
+        this.playbackManager = new PlaybackManager(audioPlayer, configManager, this, discord, videoSynchronizer);
+        
+        this.exportManager = new ExportManager(musicManager);
+        this.coverManager = new CoverManager(musicManager);
+        this.playlistHelper = new PlaylistHelper(playlistManager, exportManager);
+
+        this.playlistHelper.setOnPlaylistsChangedCallback(() -> songListView.refresh());
+
+        videoPlayer.events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
+            @Override
+            public void finished(uk.co.caprica.vlcj.player.base.MediaPlayer mediaPlayer) {
+                Platform.runLater(() -> {
+                    videoSynchronizer.reset();
+                    videoVisibilityHelper.hideVideo();
+                    updateCoverImage(currentSongLabel.getText());
+                });
+            }
+        });
+
+        favoriteButton.setStyle("-fx-font-size: 28px; -fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #ff69b4;");
+        favoriteButton.setFocusTraversable(false);
+        favoriteButton.setOnAction(e -> toggleFavorito());
+        
+        videoPlayer.videoSurface().set(new ImageViewVideoSurface(videoImageView));
+
+        mediaDisplayStack = new StackPane();
+        mediaDisplayStack.getChildren().addAll(coverImageView, videoImageView);
+        mediaDisplayStack.setMaxWidth(Double.MAX_VALUE);
+        mediaDisplayStack.setMinWidth(100);
+        mediaDisplayStack.setMinHeight(100);
+    }
+    
+    private ImageView createCoverImageView() {
+        ImageView view = new ImageView();
+        view.setPreserveRatio(true);
+        view.setSmooth(true);
+        view.setCache(true);
+        return view;
+    }
+
+    private ImageView createVideoImageView() {
+        ImageView view = new ImageView();
+        view.setPreserveRatio(true);
+        view.setSmooth(true);
+        view.setCache(true);
+        return view;
+    }
+    
+    public void start(Stage primaryStage) {
+        primaryStage.setTitle("Osulux");
+    
+        try (InputStream iconStream = getClass().getResourceAsStream("/Icon.jpg")) {
+            if (iconStream != null) {
+                primaryStage.getIcons().add(new Image(iconStream));
+            }
+        } catch (Exception ignored) {}
+    
+        UIHelper.TopBarComponents topBar = UIHelper.createTopBar(primaryStage, this::handleFolderSelection, this::applyTheme);
+        UIHelper.ControlBarComponents controlBar = UIHelper.createControlBar();
+    
+        searchManager.setupSearchField(topBar.searchField(), songListView, currentSongLabel);
+        playbackManager.initializeControls(controlBar.progressSlider(), controlBar.timeLabel(), controlBar.volumeSlider(), controlBar.playPauseButton(), controlBar.shuffleButton(), controlBar.previousButton(), controlBar.stopButton(), controlBar.nextButton());
+    
+        songListView.setCellFactory(lv -> new SongListCell(playlistManager, favoritesManager, exportManager, musicManager, this::refreshUIState));
+        songListView.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
+                playSelectedSong();
+            }
+        });
+    
+        mediaContainer = UIHelper.createMediaPanel(mediaDisplayStack, currentSongLabel, favoriteButton);
+    
+        coverImageView.fitWidthProperty().bind(mediaDisplayStack.widthProperty());
+        coverImageView.fitHeightProperty().bind(mediaDisplayStack.heightProperty());
+        
+        videoImageView.fitWidthProperty().bind(mediaDisplayStack.widthProperty());
+        videoImageView.fitHeightProperty().bind(mediaDisplayStack.heightProperty());
+
+        BorderPane root = new BorderPane();
+        root.setTop(topBar.bar());
+        root.setBottom(controlBar.bar());
+    
+        this.scene = new Scene(root, configManager.getWindowWidth(), configManager.getWindowHeight());
+    
+        VBox playlistBox = playlistHelper.initialize(this::selectPlaylist, scene.getStylesheets());
+        final VBox songListContainer = new VBox(songListView);
+        VBox.setVgrow(songListView, Priority.ALWAYS);
+    
+        SplitPane splitPane = new SplitPane(playlistBox, songListContainer, mediaContainer);
+        LayoutUtils.setupDynamicSplitPane(splitPane, playlistBox, songListContainer, mediaContainer);
+    
+        root.setCenter(splitPane);
+    
+        primaryStage.setScene(scene);
+    
+        String savedTheme = configManager.getTheme();
+        applyTheme(savedTheme);
+        for (Toggle toggle : topBar.themeToggleGroup().getToggles()) {
+            if (savedTheme.equals(toggle.getUserData())) {
+                toggle.setSelected(true);
+                break;
+            }
+        }
+    
+        primaryStage.show();
+    
+        Platform.runLater(() -> {
+            songListView.prefHeightProperty().bind(splitPane.heightProperty());
+    
+            String lastFolder = configManager.getLastFolder();
+            File folder = (lastFolder != null && !lastFolder.isEmpty()) ? new File(lastFolder) : null;
+    
+            if (folder == null || !folder.isDirectory()) {
+                promptForSongFolder(primaryStage);
+            } else {
+                handleFolderSelection(folder);
+            }
+    
+            String lastSong = configManager.getLastSong();
+            if (lastSong != null && !lastSong.isEmpty()) {
+                selectAndPreloadLastSong(lastSong);
+            }
+        });
+    }
+    
+    private void applyTheme(String themeId) {
+        if (scene == null) return;
+        scene.getStylesheets().removeIf(s -> s.contains("theme-"));
+
+        if (themeId != null && !themeId.isEmpty()) {
+            String cssPath = "/theme-" + themeId + ".css";
+            URL cssUrl = getClass().getResource(cssPath);
+            if (cssUrl != null) {
+                scene.getStylesheets().add(cssUrl.toExternalForm());
+                configManager.setTheme(themeId);
+            } else {
+                System.err.println("No se pudo encontrar el archivo de tema: " + cssPath);
+            }
+        }
+    }
+    
+    private void promptForSongFolder(Stage ownerStage) {
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        directoryChooser.setTitle("Selecciona tu carpeta de canciones de osu!");
+        String userHome = System.getProperty("user.home");
+        File defaultDir = new File(userHome, "AppData/Local/osu!/Songs");
+        if (defaultDir.exists() && defaultDir.isDirectory()) {
+            directoryChooser.setInitialDirectory(defaultDir);
+        }
+        File selectedDirectory = directoryChooser.showDialog(ownerStage);
+        if (selectedDirectory != null) {
+            handleFolderSelection(selectedDirectory);
+        }
+    }
+
+    private void handleFolderSelection(File folder) {
+        musicManager.setLastFolderPath(folder.getAbsolutePath());
+        configManager.setLastFolder(folder.getAbsolutePath());
+        loadSongs(folder);
+        selectInitialPlaylist();
+    }
+
+    private void selectInitialPlaylist() {
+        String desired = configManager.getLastPlaylist();
+        if (desired == null || desired.isBlank() || !playlistManager.getAllPlaylists().contains(desired)) {
+            desired = "Todo";
+        }
+        selectPlaylist(desired);
+    }
+
+    private void refreshUIState() {
+        String currentPlaylist = playlistHelper.getSelectedPlaylist();
+        if (currentPlaylist != null) {
+            loadPlaylistSongs(currentPlaylist);
+        }
+        updateFavoriteButton(currentSongLabel.getText());
+        songListView.refresh();
+    }
+    
+    public void prepareCurrentSongForReplay() {
+        String currentSong = currentSongLabel.getText();
+        if (currentSong != null && !currentSong.isEmpty()) {
+            String path = musicManager.getSongPath(currentSong);
+            if (path != null) {
+                audioPlayer.media().prepare(path);
+            }
+        }
+    }
+    
+    private void selectAndPreloadLastSong(String lastSong) {
+        if (lastSong == null || lastSong.isEmpty() || masterSongList.isEmpty()) {
+            return;
+        }
+        Platform.runLater(() -> {
+            int index = masterSongList.indexOf(lastSong);
+            if (index >= 0) {
+                scrollToAndSelect(index);
+                currentSongLabel.setText(lastSong);
+                updateFavoriteButton(lastSong);
+                updateCoverImage(lastSong);
+                String path = musicManager.getSongPath(lastSong);
+                if (path != null) {
+                    playbackManager.onNewMedia();
+                    audioPlayer.media().prepare(path);
+                }
+                playbackManager.updatePlayPauseButton(false);
+                musicManager.clearHistory();
+                musicManager.addToHistory(lastSong);
+                playlistManager.setPlaylistSongs("Historial", new ArrayList<>(musicManager.getHistory()));
+                List<String> hm = new ArrayList<>(musicManager.getHistory());
+                Collections.reverse(hm);
+                historyManager.setHistory(hm, hm.isEmpty() ? -1 : hm.size() - 1);
+            }
+        });
+    }
+
+    public void playNextFromHistoryOrNormal() {
+        if (historyManager.hasNext()) {
+            String next = historyManager.getNext();
+            if (next != null && !next.isEmpty()) {
+                playSong(next, true);
+                return;
+            }
+        }
+        playNextSong();
+    }
+
+    private void selectPlaylist(String playlistName) {
+        if (playlistName == null) return;
+        if (!playlistManager.getAllPlaylists().contains(playlistName)) {
+            playlistName = "Todo";
+        }
+        playlistHelper.selectPlaylist(playlistName);
+        configManager.setLastPlaylist(playlistName);
+        loadPlaylistSongs(playlistName);
+    }
+
+    private void loadPlaylistSongs(String playlistName) {
+        List<String> songs = playlistManager.getPlaylist(playlistName);
+        masterSongList.setAll(songs);
+        
+        if (filteredSongList == null) {
+            filteredSongList = new FilteredList<>(masterSongList, s -> true);
+            searchManager.setFilteredList(filteredSongList);
+        }
+        
+        songListView.setItems(filteredSongList);
+        songListView.refresh();
+        Platform.runLater(songListView::layout);
+        scrollToCurrentSong();
+    }
+    
+    public void playSelectedSong() {
+        String selectedSong = songListView.getSelectionModel().getSelectedItem();
+        if (selectedSong == null) return;
+        playSong(selectedSong, false);
+    }
+
+    private void updateFavoriteButton(String songName) {
+        favoriteButton.setText(favoritesManager.isFavorite(songName) ? "♥" : "♡");
+    }
+
+    private void toggleFavorito() {
+        String currentSong = currentSongLabel.getText();
+        if (currentSong == null || currentSong.isEmpty() || "Sin canción".equals(currentSong)) {
+            return;
+        }
+
+        favoritesManager.toggleFavorite(currentSong);
+        refreshUIState();
+    }
+
+    public void playNextSong() {
+        if (filteredSongList == null || filteredSongList.isEmpty()) return;
+
+        if (playbackManager.isShuffleEnabled()) {
+            int index = playbackManager.getRandomIndex(filteredSongList.size());
+            playSong(filteredSongList.get(index), false);
+        } else {
+            int currentIndex = songListView.getSelectionModel().getSelectedIndex();
+            int nextIndex = (currentIndex + 1) % filteredSongList.size();
+            playSong(filteredSongList.get(nextIndex), false);
+        }
+    }
+
+    public void playPreviousSong() {
+        if (filteredSongList == null || filteredSongList.isEmpty()) return;
+
+        int currentIndex = songListView.getSelectionModel().getSelectedIndex();
+        int prevIndex = currentIndex > 0 ? currentIndex - 1 : filteredSongList.size() - 1;
+        playSong(filteredSongList.get(prevIndex), false);
+    }
+
+    public void playPreviousFromHistory() {
+        if (historyManager.hasPrevious()) {
+            String previous = historyManager.getPrevious();
+            if (previous != null && !previous.isEmpty()) {
+                playSong(previous, true);
+                return;
+            }
+        }
+        playPreviousSong();
+    }
+
+    private void playSong(String songName, boolean fromHistory) {
+        if (songName == null) return;
+        String songPath = musicManager.getSongPath(songName);
+        if (songPath == null) return;
+
+        playbackManager.setCurrentSongForDiscord(songName);
+        playbackManager.onNewMedia();
+
+        audioPlayer.controls().stop();
+
+        String videoPath = musicManager.getVideoPath(songName);
+        if (videoPath != null && new File(videoPath).exists()) {
+            long offset = musicManager.getVideoOffset(songName);
+            videoSynchronizer.loadVideo(videoPath, offset);
+        } else {
+            videoSynchronizer.reset();
+        }
+
+        audioPlayer.media().play(songPath);
+
+        currentSongLabel.setText(songName);
+        updateFavoriteButton(songName);
+        updateCoverImage(songName);
+        
+        playbackManager.updatePlayPauseButton(true);
+
+        if (!fromHistory) {
+            historyManager.addSong(songName);
+            musicManager.addToHistory(songName);
+            playlistManager.setPlaylistSongs("Historial", new ArrayList<>(musicManager.getHistory()));
+            songListView.refresh();
+        } else {
+            List<String> hm = historyManager.getHistory();
+            int idx = hm.indexOf(songName);
+            if (idx >= 0) historyManager.setIndex(idx);
+        }
+
+        configManager.setLastSong(songName);
+        scrollToCurrentSong();
+    }
+
+    private void scrollToCurrentSong() {
+        Platform.runLater(() -> {
+            String currentSong = currentSongLabel.getText();
+            if (currentSong != null && filteredSongList != null && !filteredSongList.isEmpty()) {
+                int index = filteredSongList.indexOf(currentSong);
+                scrollToAndSelect(index);
+            }
+        });
+    }
+
+    private void scrollToAndSelect(int index) {
+        if (index < 0) return;
+
+        int scrollToIndex = Math.max(0, index - 5); 
+        songListView.scrollTo(scrollToIndex);
+
+        Platform.runLater(() -> {
+            songListView.getSelectionModel().select(index);
+            songListView.getFocusModel().focus(index);
+            songListView.requestFocus();
+        });
+    }
+
+    public void highlightCurrentSong() {
+        Platform.runLater(() -> {
+            String currentSong = currentSongLabel.getText();
+            if (currentSong == null || filteredSongList == null) {
+                return;
+            }
+            int index = filteredSongList.indexOf(currentSong);
+            if (index >= 0) {
+                songListView.getSelectionModel().select(index);
+                songListView.getFocusModel().focus(index);
+                songListView.requestFocus();
+            }
+        });
+    }
+
+
+    private void loadSongs(File folder) {
+        Map<String, String> loadedSongs = musicManager.loadSongsFromFolder(folder);
+        Set<String> allSongs = loadedSongs.keySet();
+        
+        playlistManager.setPlaylistSongs("Todo", new ArrayList<>(allSongs));
+
+        for (String playlistName : playlistManager.getAllPlaylists()) {
+            if (!playlistManager.isSpecialPlaylist(playlistName)) {
+                List<String> currentSongs = new ArrayList<>(playlistManager.getPlaylist(playlistName));
+                currentSongs.removeIf(song -> !allSongs.contains(song));
+                playlistManager.setPlaylistSongs(playlistName, currentSongs);
+            }
+        }
+
+        favoritesManager.validateFavorites(allSongs);
+
+        List<String> currentHistory = new ArrayList<>(musicManager.getHistory());
+        currentHistory.removeIf(song -> !allSongs.contains(song));
+        playlistManager.setPlaylistSongs("Historial", currentHistory);
+        
+        List<String> hm = new ArrayList<>(musicManager.getHistory());
+        Collections.reverse(hm);
+        historyManager.setHistory(hm, hm.isEmpty() ? -1 : hm.size() - 1);
+
+        playlistManager.savePlaylists();
+        playlistHelper.refreshPlaylistList();
+    }
+
+
+
+    private void updateCoverImage(String songName) {
+        Image coverImage = coverManager.getCoverImage(songName);
+        coverImageView.setImage(coverImage);
+    }
+
+    public void hideVideo() {
+        videoVisibilityHelper.hideVideo();
+    }
+}

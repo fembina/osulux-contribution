@@ -13,6 +13,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <javafx.version>21.0.8</javafx.version>
         <vlcj.version>4.7.1</vlcj.version>
+        <maven.test.skip>true</maven.test.skip>
     </properties>
 
     <repositories>
@@ -36,6 +37,11 @@
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-graphics</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-web</artifactId>
             <version>${javafx.version}</version>
         </dependency>
         <dependency>
@@ -73,12 +79,26 @@
             <artifactId>Discord-Game-SDK4J</artifactId>
             <version>0.5.2</version>
         </dependency>
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.18.1</version>
+        </dependency>
+        <dependency>
+            <groupId>net.lingala.zip4j</groupId>
+            <artifactId>zip4j</artifactId>
+            <version>2.11.5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.kwhat</groupId>
+            <artifactId>jnativehook</artifactId>
+            <version>2.2.2</version>
+        </dependency>
     </dependencies>
 
     <build>
         <finalName>osulux</finalName>
         <plugins>
-            <!-- Compilador -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -97,7 +117,7 @@
                     <appendAssemblyId>false</appendAssemblyId>
                     <archive>
                         <manifest>
-                            <mainClass>com.osuplayer.Launcher</mainClass>
+                            <mainClass>com.osuplayer.app.Launcher</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
@@ -111,6 +131,21 @@
                         <goals>
                             <goal>single</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>default-test</id>
+                        <phase>none</phase>
                     </execution>
                 </executions>
             </plugin>

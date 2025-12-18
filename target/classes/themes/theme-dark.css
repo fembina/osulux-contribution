@@ -1,0 +1,120 @@
+.root {
+    -fx-base: #3c3f41;
+    -fx-background: #3c3f41;
+    -fx-control-inner-background: #45494a;
+    -fx-accent: #0096c9;
+    -fx-default-button: #505355;
+    -fx-focus-color: #0096c9;
+    -fx-faint-focus-color: #0096c922;
+    -fx-text-background-color: #e0e0e0;
+}
+.menu-bar, .context-menu {
+    -fx-background-color: derive(-fx-base, -5%);
+}
+.menu .label, .menu-item .label, .label {
+    -fx-text-fill: -fx-text-background-color;
+}
+.split-pane {
+    -fx-background-color: #2b2b2b;
+}
+.list-view {
+    -fx-background-color: #45494a;
+}
+.list-cell {
+    -fx-padding: 3px 5px;
+    -fx-text-fill: -fx-text-background-color;
+}
+.list-cell:odd {
+    -fx-background-color: #505355;
+}
+.list-cell:even {
+    -fx-background-color: #45494a;
+}
+.list-cell:filled:hover {
+    -fx-background-color: #616466;
+}
+.list-view .list-cell:filled:selected {
+    -fx-background-color: derive(-fx-accent, 20%);
+    -fx-text-fill: white;
+}
+.list-view:focused .list-cell:filled:selected {
+    -fx-background-color: -fx-accent;
+    -fx-text-fill: white;
+}
+.button {
+    -fx-background-color: -fx-default-button;
+    -fx-text-fill: -fx-text-background-color;
+}
+.button:hover {
+    -fx-background-color: #616466;
+}
+.slider .thumb {
+    -fx-background-color: -fx-accent;
+}
+.slider .track {
+    -fx-background-color: #505355;
+}
+.menu:hover, .menu-item:hover {
+    -fx-background-color: #505355;
+}
+.text-field {
+    -fx-text-fill: -fx-text-background-color;
+    -fx-prompt-text-fill: #9E9E9E;
+    -fx-border-color: #2b2b2b;
+    -fx-border-radius: 3;
+}
+.text-field:focused {
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 1.5px;
+    -fx-effect: innershadow(gaussian, #0096c933, 5, 0, 0, 0);
+}
+
+.song-mapper {
+    -fx-font-style: italic;
+}
+
+.song-difficulty {
+    -fx-font-style: italic;
+}
+
+.metadata-dialog {
+    -fx-background-color: -fx-background;
+}
+
+.metadata-dialog .header-panel,
+.metadata-dialog .content,
+.metadata-grid {
+    -fx-background-color: -fx-background;
+}
+
+.metadata-dialog .label,
+.metadata-label,
+.metadata-value {
+    -fx-text-fill: -fx-text-background-color;
+}
+
+.metadata-label {
+    -fx-font-weight: bold;
+}
+
+/* Keep combo-box arrow buttons visible and consistent across themes */
+.combo-box, .choice-box {
+    -fx-background-insets: 0, 0.5;
+    -fx-background-radius: 4;
+}
+
+.combo-box .arrow-button, .choice-box .arrow-button {
+    -fx-background-color: derive(-fx-base, -5%), derive(-fx-base, -15%);
+    -fx-background-radius: 0 4 4 0;
+    -fx-padding: 0 10 0 10;
+}
+
+.combo-box:focused .arrow-button, .choice-box:focused .arrow-button,
+.combo-box:showing .arrow-button, .choice-box:showing .arrow-button,
+.combo-box:pressed .arrow-button, .choice-box:pressed .arrow-button {
+    -fx-background-color: -fx-accent, derive(-fx-accent, -10%);
+}
+
+.combo-box .arrow, .choice-box .arrow {
+    -fx-background-color: -fx-text-background-color;
+}

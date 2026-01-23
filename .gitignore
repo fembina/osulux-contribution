@@ -1,0 +1,27 @@
+# IDE
+.idea/
+.vscode/
+*.iws
+*.iml
+*.ipr
+
+# JAVA
+*.class
+
+# PACKAGES
+*.exe
+*.vbs
+*.jar
+
+# BUILD
+lib/
+target/
+runtime/
+
+# SYSTEM
+.DS_Store
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+$RECYCLE.BIN/

@@ -11,8 +11,10 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.osuplayer.dependencies.DiscordDependencyLoader;
 import com.osuplayer.lang.I18n;
 
+import com.osuplayer.dependencies.DependencyDirectoryProvider;
 import de.jcm.discordgamesdk.Core;
 import de.jcm.discordgamesdk.CreateParams;
 import de.jcm.discordgamesdk.activity.Activity;
@@ -62,16 +64,18 @@ public class DiscordRichPresence {
     }
 
     public void start(long clientId) {
-        try {
-            Core.init(new File("lib/discord_game_sdk.dll"));
-            try (CreateParams params = new CreateParams()) {
-                params.setClientID(clientId);
-                params.setFlags(CreateParams.getDefaultFlags());
-                this.core = new Core(params);
-                this.running = true;
-                this.callbackThread.start();
-                setIdleStatus();
-            }
+        if (!DiscordDependencyLoader.GLOBAL.loadWithResult()) {
+            LOGGER.severe("No se pudieron cargar las dependencias de Discord SDK");
+            return;
+        }
+
+        try (CreateParams params = new CreateParams()) {
+            params.setClientID(clientId);
+            params.setFlags(CreateParams.getDefaultFlags());
+            this.core = new Core(params);
+            this.running = true;
+            this.callbackThread.start();
+            setIdleStatus();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "No se pudo inicializar Discord SDK", e);
         }

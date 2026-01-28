@@ -18,6 +18,10 @@ lib/
 target/
 runtime/
 
+# APP
+config/
+discord-ipc-*
+
 # SYSTEM
 .DS_Store
 Thumbs.db

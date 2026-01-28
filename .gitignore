@@ -5,6 +5,10 @@
 *.iml
 *.ipr
 
+# GIT
+*.patch
+*.diff
+
 # JAVA
 *.class
 

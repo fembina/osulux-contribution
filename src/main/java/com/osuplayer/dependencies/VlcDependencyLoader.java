@@ -21,7 +21,7 @@ public class VlcDependencyLoader extends DependencyLoader {
         var librariesDirectory = librariesGlobalDirectory.resolve(librariesLocalDirectory);
 
         System.setProperty("VLC_PLUGIN_PATH", Path.of(librariesDirectory.toString(), "plugins").toString());
-        System.setProperty("jna.library.path", librariesDirectory.toString());
+        System.setProperty("jna.library.path", librariesGlobalDirectory.toString());
         NativeLibrary.addSearchPath(RuntimeUtil.getLibVlcLibraryName(), librariesDirectory.toString());
     }
 

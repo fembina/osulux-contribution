@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 public final class IconDependencyProvider {
     private static final Supplier<Image> ICON_SUPPLIER = IconDependencyProvider::loadIcon;
 
-    public static Image get() {
+    public static Image getOrNull() {
         return ICON_SUPPLIER.get();
     }
 

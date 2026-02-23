@@ -376,7 +376,7 @@ public final class AboutDialog {
 
     private static Image getFallbackIcon() {
         if (fallbackAppIcon == null) {
-            fallbackAppIcon = IconDependencyProvider.get();
+            fallbackAppIcon = IconDependencyProvider.getOrNull();
         }
         return fallbackAppIcon;
     }

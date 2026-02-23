@@ -144,7 +144,7 @@ public class BeatmapDeletionHelper {
             return;
         }
         if (fallbackIcon == null) {
-            fallbackIcon = IconDependencyProvider.get();
+            fallbackIcon = IconDependencyProvider.getOrNull();
         }
         if (fallbackIcon != null) {
             alertStage.getIcons().setAll(fallbackIcon);

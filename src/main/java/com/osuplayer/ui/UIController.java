@@ -225,7 +225,7 @@ public class UIController {
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Osulux");
         if (primaryStage.getIcons().isEmpty()) {
-            Image appIcon = IconDependencyProvider.get();
+            Image appIcon = IconDependencyProvider.getOrNull();
             if (appIcon != null) {
                 primaryStage.getIcons().add(appIcon);
             }

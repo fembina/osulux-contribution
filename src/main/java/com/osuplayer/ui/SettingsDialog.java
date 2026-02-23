@@ -357,7 +357,7 @@ public class SettingsDialog {
 
     private static Image getFallbackIcon() {
         if (fallbackIcon == null) {
-            fallbackIcon = IconDependencyProvider.get();
+            fallbackIcon = IconDependencyProvider.getOrNull();
         }
         return fallbackIcon;
     }

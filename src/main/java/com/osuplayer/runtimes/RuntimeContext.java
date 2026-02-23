@@ -1,4 +1,4 @@
-package com.osuplayer.dependencies;
+package com.osuplayer.runtimes;
 
 public record RuntimeContext(RuntimePlatform platform, RuntimeArchitecture architecture) {
     public static RuntimeContext CURRENT = current();

@@ -1,6 +1,5 @@
 package com.osuplayer.discord;
 
-import java.io.File;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,7 +13,6 @@ import java.util.logging.Logger;
 import com.osuplayer.dependencies.DiscordDependencyLoader;
 import com.osuplayer.lang.I18n;
 
-import com.osuplayer.dependencies.DependencyDirectoryProvider;
 import de.jcm.discordgamesdk.Core;
 import de.jcm.discordgamesdk.CreateParams;
 import de.jcm.discordgamesdk.activity.Activity;

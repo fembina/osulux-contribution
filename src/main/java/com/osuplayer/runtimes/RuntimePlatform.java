@@ -1,6 +1,6 @@
-package com.osuplayer.dependencies;
+package com.osuplayer.runtimes;
 
-import javafx.util.Pair;
+import com.osuplayer.common.KeyValuePair;
 
 import java.util.List;
 
@@ -15,21 +15,21 @@ public enum RuntimePlatform {
         var platform = System.getProperty("os.name").toLowerCase();
 
         for (var context : getPlatformsPatterns()) {
-            if (platform.contains(context.getKey())) {
-                return context.getValue();
+            if (platform.contains(context.key())) {
+                return context.value();
             }
         }
 
         throw new UnsupportedOperationException("Unsupported operating system: " + platform);
     }
 
-    private static List<Pair<String, RuntimePlatform>> getPlatformsPatterns() {
+    private static List<KeyValuePair<String, RuntimePlatform>> getPlatformsPatterns() {
         return List.of(
-            new Pair<>("win", WINDOWS),
-            new Pair<>("mac", OSX),
-            new Pair<>("nix", LINUX),
-            new Pair<>("nux", LINUX),
-            new Pair<>("aix", LINUX)
+            new KeyValuePair<>("win", WINDOWS),
+            new KeyValuePair<>("mac", OSX),
+            new KeyValuePair<>("nix", LINUX),
+            new KeyValuePair<>("nux", LINUX),
+            new KeyValuePair<>("aix", LINUX)
         );
     }
 }
